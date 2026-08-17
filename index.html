@@ -3,63 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>水运交安题库 - 智能刷题系统</title>
+  <title>粤交安水运类 - 智能刷题与模拟考试系统</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; max-width: 680px; margin: 0 auto; background: #f4f5f7; color: #333; }
     
-    /* 顶部模式切换与统计 */
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #fff; padding: 10px 16px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .mode-select { padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 6px; border: 1px solid #007aff; color: #007aff; background: #f0f7ff; outline: none; cursor: pointer; }
-    .stat-text { font-size: 13px; color: #666; display: flex; gap: 10px; }
+    .mode-select { padding: 6px 10px; font-size: 13px; font-weight: bold; border-radius: 6px; border: 1px solid #007aff; color: #007aff; background: #f0f7ff; outline: none; cursor: pointer; }
+    .stat-text { font-size: 12px; color: #666; display: flex; gap: 8px; }
     .stat-item span { font-weight: bold; }
     .stat-total span { color: #007aff; }
     .stat-correct span { color: #34a853; }
     .stat-wrong span { color: #d93025; }
 
-    /* 题目卡片 */
     .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px; }
     .badge { display: inline-block; padding: 4px 10px; background: #007aff; color: white; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 12px; }
+    .badge.case-mode { background: #ff9500; }
+    .badge.exam-mode { background: #5856d6; }
     .badge.wrong-mode { background: #d93025; }
-    .question-title { font-size: 16px; font-weight: 600; line-height: 1.5; margin-bottom: 15px; white-space: pre-line; }
+    
+    .question-title { font-size: 15px; font-weight: 600; line-height: 1.6; margin-bottom: 15px; white-space: pre-line; word-break: break-all; }
 
-    /* 选项样式 */
-    .option-btn { display: block; width: 100%; text-align: left; padding: 12px 15px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; font-size: 15px; cursor: pointer; transition: all 0.2s; line-height: 1.4; }
+    .option-btn { display: block; width: 100%; text-align: left; padding: 12px 15px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafafa; font-size: 14px; cursor: pointer; transition: all 0.2s; line-height: 1.4; }
     .option-btn.selected { border-color: #007aff; background: #eef6ff; color: #007aff; font-weight: 500; }
     .option-btn.correct { background: #e6f4ea !important; border-color: #34a853 !important; color: #137333; font-weight: bold; }
     .option-btn.wrong { background: #fce8e6 !important; border-color: #ea4335 !important; color: #c5221f; }
 
-    /* 底部按钮 */
     .controls { display: flex; gap: 10px; margin-top: 18px; }
     .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
     .btn-primary { background: #007aff; color: white; }
-    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-    .btn-success { background: #34a853; color: white; }
+    .btn-danger { background: #d93025; color: white; }
 
-    /* 结果与答案解析框 */
     .result-box { margin-top: 15px; padding: 12px 15px; border-radius: 8px; font-weight: bold; display: none; line-height: 1.5; font-size: 14px; }
-    .empty-state { text-align: center; padding: 40px 20px; color: #666; font-size: 16px; }
+    .empty-state { text-align: center; padding: 30px 20px; color: #666; font-size: 15px; line-height: 1.6; }
+    .exam-timer { color: #d93025; font-weight: bold; font-size: 14px; }
   </style>
 </head>
 <body>
 
-<!-- 顶部栏：模式切换 & 三项数据统计 -->
 <div class="header-bar">
   <select id="practice-mode" class="mode-select" onchange="changeMode()">
-    <option value="all">随机刷题（全题库）</option>
+    <option value="all">全题库随机刷题</option>
+    <option value="single">单选题专练</option>
+    <option value="multiple">多选题专练</option>
+    <option value="case">案例题专练</option>
     <option value="wrong">专属错题本</option>
+    <option value="exam">🏆 粤交安标准模拟考试</option>
   </select>
-  <div class="stat-text">
-    <div class="stat-item stat-total">总题数: <span id="total-count">0</span></div>
-    <div class="stat-item stat-correct">做对: <span id="correct-count">0</span></div>
-    <div class="stat-item stat-wrong">错题: <span id="wrong-count">0</span></div>
+  <div class="stat-text" id="stat-container">
+    <div class="stat-item stat-total">总数:<span id="total-count">0</span></div>
+    <div class="stat-item stat-correct">做对:<span id="correct-count">0</span></div>
+    <div class="stat-item stat-wrong">错题:<span id="wrong-count">0</span></div>
   </div>
+  <div id="exam-timer-box" class="exam-timer" style="display:none;">剩余时间: <span id="timer">90:00</span></div>
 </div>
 
-<!-- 答题主卡片 -->
 <div class="card" id="main-card">
   <div>
     <span class="badge" id="q-type">单选题</span>
+    <span id="exam-progress" style="font-size:12px; color:#666; float:right; display:none;">进度: 1/100</span>
   </div>
   <div class="question-title" id="q-title">题目加载中...</div>
   <div id="options-box"></div>
@@ -67,8 +69,7 @@
   <div id="result-box" class="result-box"></div>
 
   <div class="controls">
-    <button class="btn btn-primary" id="submit-btn" onclick="checkAnswer()">提交答案</button>
-    <button class="btn btn-success" onclick="nextQuestion()">下一题</button>
+    <button class="btn btn-primary" id="action-btn" onclick="handleAction()">下一个 / 验证</button>
   </div>
 </div>
 
@@ -77,12 +78,18 @@
   let currentQ = null;
   let selectedOpts = [];
   let currentMode = 'all';
+  let isAnswerChecked = false; // 刷题模式下是否已显示错题解析
 
-  // 读取错题集与已做对题集
+  // 模拟考试变量
+  let examQuestions = [];
+  let examIndex = 0;
+  let examUserAnswers = {};
+  let examTimerInterval = null;
+  let examSecondsLeft = 5400; // 90分钟
+
   let wrongList = JSON.parse(localStorage.getItem('water_safety_wrong_list') || '[]');
   let correctList = JSON.parse(localStorage.getItem('water_safety_correct_list') || '[]');
 
-  // 加载 JSON 数据库
   fetch('questions.json')
     .then(res => res.json())
     .then(data => {
@@ -91,23 +98,30 @@
       nextQuestion();
     })
     .catch(err => {
-      document.getElementById('q-title').innerText = "加载题库失败，请确保 questions.json 已生成并在根目录下。";
+      document.getElementById('q-title').innerText = "加载题库失败，请确认 questions.json 已存在。";
     });
 
-  // 更新统计数据
   function updateStats() {
     document.getElementById('total-count').innerText = allQuestions.length;
     document.getElementById('correct-count').innerText = correctList.length;
     document.getElementById('wrong-count').innerText = wrongList.length;
   }
 
-  // 模式切换
   function changeMode() {
     currentMode = document.getElementById('practice-mode').value;
-    nextQuestion();
+    clearInterval(examTimerInterval);
+    
+    if (currentMode === 'exam') {
+      startExam();
+    } else {
+      document.getElementById('stat-container').style.display = 'flex';
+      document.getElementById('exam-timer-box').style.display = 'none';
+      document.getElementById('exam-progress').style.display = 'none';
+      nextQuestion();
+    }
   }
 
-  // 抽题逻辑
+  /* ------------------- 刷题逻辑（无缝跳转与合并按钮） ------------------- */
   function nextQuestion() {
     if (!allQuestions.length) return;
 
@@ -116,7 +130,13 @@
     if (currentMode === 'wrong') {
       pool = allQuestions.filter(q => wrongList.includes(q.id));
       if (pool.length === 0) {
-        showEmptyState("🎉 太棒了！错题本为空，或者你已经清空了所有错题！");
+        showEmptyState("🎉 错题本为空！你已掌握所有错题。");
+        return;
+      }
+    } else if (currentMode !== 'all') {
+      pool = allQuestions.filter(q => q.type === currentMode);
+      if (pool.length === 0) {
+        showEmptyState("暂无该题型题目。");
         return;
       }
     } else {
@@ -126,19 +146,25 @@
     const randomIndex = Math.floor(Math.random() * pool.length);
     currentQ = pool[randomIndex];
     selectedOpts = [];
+    isAnswerChecked = false;
 
-    // 恢复界面
+    renderQuestionCard();
+  }
+
+  function renderQuestionCard() {
     document.getElementById('main-card').style.display = 'block';
     document.getElementById('result-box').style.display = 'none';
-    document.getElementById('submit-btn').disabled = false;
+    
+    const actionBtn = document.getElementById('action-btn');
+    actionBtn.innerText = currentMode === 'exam' ? (examIndex === 99 ? "提交试卷" : "下一题") : "下一题";
+    actionBtn.className = "btn btn-primary";
 
     const typeBadge = document.getElementById('q-type');
     typeBadge.innerText = getTypeName(currentQ.type);
-    if (currentMode === 'wrong') {
-      typeBadge.classList.add('wrong-mode');
-    } else {
-      typeBadge.classList.remove('wrong-mode');
-    }
+    typeBadge.className = 'badge';
+    if (currentQ.type === 'case') typeBadge.classList.add('case-mode');
+    if (currentMode === 'wrong') typeBadge.classList.add('wrong-mode');
+    if (currentMode === 'exam') typeBadge.classList.add('exam-mode');
 
     document.getElementById('q-title').innerText = `${currentQ.id}. ${currentQ.question}`;
     
@@ -154,16 +180,12 @@
     });
   }
 
-  function getTypeName(type) {
-    if (type === 'multiple') return '多选题';
-    if (type === 'judge') return '判断题';
-    return '单选题';
-  }
-
   function selectOption(letter, btn) {
-    if (document.getElementById('submit-btn').disabled) return;
+    if (isAnswerChecked && currentMode !== 'exam') return;
 
-    if (currentQ.type === 'single' || currentQ.type === 'judge') {
+    const isMulti = currentQ.type === 'multiple' || currentQ.answer.length > 1;
+
+    if (!isMulti) {
       selectedOpts = [letter];
       document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
@@ -179,52 +201,58 @@
     }
   }
 
-  // 提交并判定
-  function checkAnswer() {
+  // 核心按钮控制逻辑：做对直接下一题，做错暂停提示
+  function handleAction() {
+    if (currentMode === 'exam') {
+      handleExamNext();
+      return;
+    }
+
     if (selectedOpts.length === 0) {
-      alert("请先选择选项后再提交！");
+      alert("请先选择选项！");
+      return;
+    }
+
+    // 如果当前已经是处于“答错展示结果”的状态，点击则直接下一题
+    if (isAnswerChecked) {
+      nextQuestion();
       return;
     }
 
     const correctAns = currentQ.answer.sort().join('');
     const userAns = selectedOpts.sort().join('');
-    const resultBox = document.getElementById('result-box');
     const isCorrect = (userAns === correctAns);
 
-    document.querySelectorAll('.option-btn').forEach(btn => {
-      const letter = btn.innerText.charAt(0).toUpperCase();
-      if (currentQ.answer.includes(letter)) {
-        btn.classList.add('correct');
-      } else if (selectedOpts.includes(letter)) {
-        btn.classList.add('wrong');
-      }
-    });
-
-    resultBox.style.display = 'block';
-
     if (isCorrect) {
-      resultBox.style.background = '#e6f4ea';
-      resultBox.style.color = '#137333';
-      resultBox.innerText = '✅ 回答正确！';
-
-      // 加入正确题库集合
+      // 答对了，记录数据并【直接下一题】
       if (!correctList.includes(currentQ.id)) {
         correctList.push(currentQ.id);
         localStorage.setItem('water_safety_correct_list', JSON.stringify(correctList));
       }
-
-      // 错题剔除逻辑
       if (wrongList.includes(currentQ.id)) {
         wrongList = wrongList.filter(id => id !== currentQ.id);
         localStorage.setItem('water_safety_wrong_list', JSON.stringify(wrongList));
-        resultBox.innerText += ' （已从错题本移除）';
       }
+      updateStats();
+      nextQuestion();
     } else {
+      // 答错了，展示正确答案，等待用户再次点击
+      isAnswerChecked = true;
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        const letter = btn.innerText.charAt(0).toUpperCase();
+        if (currentQ.answer.includes(letter)) {
+          btn.classList.add('correct');
+        } else if (selectedOpts.includes(letter)) {
+          btn.classList.add('wrong');
+        }
+      });
+
+      const resultBox = document.getElementById('result-box');
+      resultBox.style.display = 'block';
       resultBox.style.background = '#fce8e6';
       resultBox.style.color = '#c5221f';
       resultBox.innerText = `❌ 回答错误！正确答案是：${correctAns}`;
 
-      // 加入错题库，如果之前在正确库里则剔除
       if (!wrongList.includes(currentQ.id)) {
         wrongList.push(currentQ.id);
         localStorage.setItem('water_safety_wrong_list', JSON.stringify(wrongList));
@@ -233,10 +261,131 @@
         correctList = correctList.filter(id => id !== currentQ.id);
         localStorage.setItem('water_safety_correct_list', JSON.stringify(correctList));
       }
+      updateStats();
+
+      document.getElementById('action-btn').innerText = "理解了，进入下一题 ➔";
+    }
+  }
+
+  /* ------------------- 粤交安模拟考试逻辑 ------------------- */
+  function startExam() {
+    document.getElementById('stat-container').style.display = 'none';
+    document.getElementById('exam-timer-box').style.display = 'block';
+    document.getElementById('exam-progress').style.display = 'inline';
+
+    // 抽题：单选40，多选20，判断20，案例20（总计100题）
+    const singles = getRandomSubarray(allQuestions.filter(q => q.type === 'single'), 40);
+    const multiples = getRandomSubarray(allQuestions.filter(q => q.type === 'multiple'), 20);
+    const judges = getRandomSubarray(allQuestions.filter(q => q.type === 'judge'), 20);
+    const cases = getRandomSubarray(allQuestions.filter(q => q.type === 'case'), 20);
+
+    examQuestions = [...singles, ...multiples, ...judges, ...cases];
+    
+    if (examQuestions.length < 100) {
+      alert("题库数量不足 100 题，将抽取现有所有题目进行模拟考试。");
     }
 
-    updateStats();
-    document.getElementById('submit-btn').disabled = true;
+    examIndex = 0;
+    examUserAnswers = {};
+    examSecondsLeft = 5400; // 90分钟计时
+    startTimer();
+
+    loadExamQuestion();
+  }
+
+  function loadExamQuestion() {
+    currentQ = examQuestions[examIndex];
+    selectedOpts = examUserAnswers[examIndex] || [];
+    document.getElementById('exam-progress').innerText = `进度: ${examIndex + 1}/${examQuestions.length}`;
+    renderQuestionCard();
+
+    // 还原已选选项
+    if (selectedOpts.length) {
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        const letter = btn.innerText.charAt(0).toUpperCase();
+        if (selectedOpts.includes(letter)) btn.classList.add('selected');
+      });
+    }
+  }
+
+  function handleExamNext() {
+    // 保存当前题作答
+    if (selectedOpts.length > 0) {
+      examUserAnswers[examIndex] = [...selectedOpts];
+    }
+
+    if (examIndex < examQuestions.length - 1) {
+      examIndex++;
+      loadExamQuestion();
+    } else {
+      if (confirm("确定要提交试卷吗？")) {
+        finishExam();
+      }
+    }
+  }
+
+  function finishExam() {
+    clearInterval(examTimerInterval);
+    let score = 0;
+    let wrongExamIds = [];
+
+    examQuestions.forEach((q, idx) => {
+      const userAns = (examUserAnswers[idx] || []).sort().join('');
+      const correctAns = q.answer.sort().join('');
+      if (userAns === correctAns) {
+        score += 1;
+      } else {
+        wrongExamIds.push(q.id);
+        if (!wrongList.includes(q.id)) wrongList.push(q.id);
+      }
+    });
+
+    localStorage.setItem('water_safety_wrong_list', JSON.stringify(wrongList));
+
+    const isPassed = score >= 80;
+    const card = document.getElementById('main-card');
+    card.innerHTML = `
+      <div class="empty-state">
+        <h2>模拟考试成绩结算</h2>
+        <h1 style="font-size: 48px; color: ${isPassed ? '#34a853' : '#d93025'}; margin: 10px 0;">${score} 分</h1>
+        <p style="font-size:16px; font-weight:bold;">${isPassed ? '🎉 恭喜通过考试！（合格线 80分）' : '❌ 未达到合格标准，请继续加油！'}</p>
+        <p style="color:#666; font-size:13px;">本次考试共 100 题，答对 ${score} 题，答错 ${100 - score} 题。错题已自动收入专属错题本。</p>
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="location.reload()">返回主页刷题</button>
+      </div>
+    `;
+  }
+
+  function startTimer() {
+    examTimerInterval = setInterval(() => {
+      examSecondsLeft--;
+      const m = Math.floor(examSecondsLeft / 60).toString().padStart(2, '0');
+      const s = (examSecondsLeft % 60).toString().padStart(2, '0');
+      document.getElementById('timer').innerText = `${m}:${s}`;
+
+      if (examSecondsLeft <= 0) {
+        clearInterval(examTimerInterval);
+        alert("考试时间到，系统已自动交卷！");
+        finishExam();
+      }
+    }, 1000);
+  }
+
+  function getRandomSubarray(arr, size) {
+    let shuffled = arr.slice(0), i = arr.length, temp, index;
+    while (i--) {
+      index = Math.floor((i + 1) * Math.random());
+      temp = shuffled[index];
+      shuffled[index] = shuffled[i];
+      shuffled[i] = temp;
+    }
+    return shuffled.slice(0, size);
+  }
+
+  function getTypeName(type) {
+    if (type === 'multiple') return '多选题';
+    if (type === 'judge') return '判断题';
+    if (type === 'case') return '案例分析题';
+    return '单选题';
   }
 
   function showEmptyState(msg) {
