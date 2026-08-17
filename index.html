@@ -32,11 +32,22 @@
     .controls { display: flex; gap: 10px; margin-top: 18px; }
     .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
     .btn-primary { background: #007aff; color: white; }
-    .btn-danger { background: #d93025; color: white; }
 
     .result-box { margin-top: 15px; padding: 12px 15px; border-radius: 8px; font-weight: bold; display: none; line-height: 1.5; font-size: 14px; }
-    .empty-state { text-align: center; padding: 30px 20px; color: #666; font-size: 15px; line-height: 1.6; }
+    .empty-state { text-align: center; padding: 20px 10px; color: #666; font-size: 15px; line-height: 1.6; }
     .exam-timer { color: #d93025; font-weight: bold; font-size: 14px; }
+
+    /* 答题卡矩阵矩阵与错题集解析样式 */
+    .card-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin: 15px 0 20px 0; }
+    .grid-item { padding: 8px 0; text-align: center; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; user-select: none; transition: transform 0.1s; }
+    .grid-item:active { transform: scale(0.9); }
+    .grid-item.correct { background: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+    .grid-item.wrong { background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; box-shadow: 0 1px 3px rgba(217, 48, 37, 0.2); }
+    .grid-item.wrong:hover { background: #d93025; color: white; }
+    
+    .review-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 5px solid #ea4335; text-align: left; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .review-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; white-space: pre-line; }
+    .review-ans { font-size: 13px; font-weight: bold; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -73,19 +84,20 @@
   </div>
 </div>
 
+<div id="review-section"></div>
+
 <script>
   let allQuestions = [];
   let currentQ = null;
   let selectedOpts = [];
   let currentMode = 'all';
-  let isAnswerChecked = false; // 刷题模式下是否已显示错题解析
+  let isAnswerChecked = false;
 
-  // 模拟考试变量
   let examQuestions = [];
   let examIndex = 0;
   let examUserAnswers = {};
   let examTimerInterval = null;
-  let examSecondsLeft = 5400; // 90分钟
+  let examSecondsLeft = 5400;
 
   let wrongList = JSON.parse(localStorage.getItem('water_safety_wrong_list') || '[]');
   let correctList = JSON.parse(localStorage.getItem('water_safety_correct_list') || '[]');
@@ -110,6 +122,7 @@
   function changeMode() {
     currentMode = document.getElementById('practice-mode').value;
     clearInterval(examTimerInterval);
+    document.getElementById('review-section').innerHTML = '';
     
     if (currentMode === 'exam') {
       startExam();
@@ -121,7 +134,6 @@
     }
   }
 
-  /* ------------------- 刷题逻辑（无缝跳转与合并按钮） ------------------- */
   function nextQuestion() {
     if (!allQuestions.length) return;
 
@@ -156,7 +168,7 @@
     document.getElementById('result-box').style.display = 'none';
     
     const actionBtn = document.getElementById('action-btn');
-    actionBtn.innerText = currentMode === 'exam' ? (examIndex === 99 ? "提交试卷" : "下一题") : "下一题";
+    actionBtn.innerText = currentMode === 'exam' ? (examIndex === examQuestions.length - 1 ? "提交试卷" : "下一题") : "下一题";
     actionBtn.className = "btn btn-primary";
 
     const typeBadge = document.getElementById('q-type');
@@ -201,7 +213,6 @@
     }
   }
 
-  // 核心按钮控制逻辑：做对直接下一题，做错暂停提示
   function handleAction() {
     if (currentMode === 'exam') {
       handleExamNext();
@@ -213,7 +224,6 @@
       return;
     }
 
-    // 如果当前已经是处于“答错展示结果”的状态，点击则直接下一题
     if (isAnswerChecked) {
       nextQuestion();
       return;
@@ -224,7 +234,6 @@
     const isCorrect = (userAns === correctAns);
 
     if (isCorrect) {
-      // 答对了，记录数据并【直接下一题】
       if (!correctList.includes(currentQ.id)) {
         correctList.push(currentQ.id);
         localStorage.setItem('water_safety_correct_list', JSON.stringify(correctList));
@@ -236,7 +245,6 @@
       updateStats();
       nextQuestion();
     } else {
-      // 答错了，展示正确答案，等待用户再次点击
       isAnswerChecked = true;
       document.querySelectorAll('.option-btn').forEach(btn => {
         const letter = btn.innerText.charAt(0).toUpperCase();
@@ -267,13 +275,12 @@
     }
   }
 
-  /* ------------------- 粤交安模拟考试逻辑 ------------------- */
+  /* ------------------- 模拟考试 + 答题卡矩阵结算 ------------------- */
   function startExam() {
     document.getElementById('stat-container').style.display = 'none';
     document.getElementById('exam-timer-box').style.display = 'block';
     document.getElementById('exam-progress').style.display = 'inline';
 
-    // 抽题：单选40，多选20，判断20，案例20（总计100题）
     const singles = getRandomSubarray(allQuestions.filter(q => q.type === 'single'), 40);
     const multiples = getRandomSubarray(allQuestions.filter(q => q.type === 'multiple'), 20);
     const judges = getRandomSubarray(allQuestions.filter(q => q.type === 'judge'), 20);
@@ -281,13 +288,9 @@
 
     examQuestions = [...singles, ...multiples, ...judges, ...cases];
     
-    if (examQuestions.length < 100) {
-      alert("题库数量不足 100 题，将抽取现有所有题目进行模拟考试。");
-    }
-
     examIndex = 0;
     examUserAnswers = {};
-    examSecondsLeft = 5400; // 90分钟计时
+    examSecondsLeft = 5400;
     startTimer();
 
     loadExamQuestion();
@@ -299,7 +302,6 @@
     document.getElementById('exam-progress').innerText = `进度: ${examIndex + 1}/${examQuestions.length}`;
     renderQuestionCard();
 
-    // 还原已选选项
     if (selectedOpts.length) {
       document.querySelectorAll('.option-btn').forEach(btn => {
         const letter = btn.innerText.charAt(0).toUpperCase();
@@ -309,7 +311,6 @@
   }
 
   function handleExamNext() {
-    // 保存当前题作答
     if (selectedOpts.length > 0) {
       examUserAnswers[examIndex] = [...selectedOpts];
     }
@@ -327,32 +328,98 @@
   function finishExam() {
     clearInterval(examTimerInterval);
     let score = 0;
-    let wrongExamIds = [];
+    let examResults = [];
 
     examQuestions.forEach((q, idx) => {
       const userAns = (examUserAnswers[idx] || []).sort().join('');
       const correctAns = q.answer.sort().join('');
-      if (userAns === correctAns) {
+      const isRight = (userAns === correctAns);
+
+      if (isRight) {
         score += 1;
       } else {
-        wrongExamIds.push(q.id);
         if (!wrongList.includes(q.id)) wrongList.push(q.id);
       }
+
+      examResults.push({
+        idx: idx + 1,
+        question: q,
+        userAns: userAns || '未作答',
+        correctAns: correctAns,
+        isRight: isRight
+      });
     });
 
     localStorage.setItem('water_safety_wrong_list', JSON.stringify(wrongList));
 
     const isPassed = score >= 80;
     const card = document.getElementById('main-card');
+    
+    // 渲染答题卡矩阵 HTML
+    let gridHTML = '<div class="card-grid">';
+    examResults.forEach(res => {
+      gridHTML += `
+        <div class="grid-item ${res.isRight ? 'correct' : 'wrong'}" 
+             onclick="${res.isRight ? '' : `scrollToReview('wrong-target-${res.idx}')`}"
+             title="${res.isRight ? '答对' : '点击查看错题解析'}">
+          ${res.idx}
+        </div>
+      `;
+    });
+    gridHTML += '</div>';
+
     card.innerHTML = `
       <div class="empty-state">
         <h2>模拟考试成绩结算</h2>
         <h1 style="font-size: 48px; color: ${isPassed ? '#34a853' : '#d93025'}; margin: 10px 0;">${score} 分</h1>
-        <p style="font-size:16px; font-weight:bold;">${isPassed ? '🎉 恭喜通过考试！（合格线 80分）' : '❌ 未达到合格标准，请继续加油！'}</p>
-        <p style="color:#666; font-size:13px;">本次考试共 100 题，答对 ${score} 题，答错 ${100 - score} 题。错题已自动收入专属错题本。</p>
-        <button class="btn btn-primary" style="margin-top:20px;" onclick="location.reload()">返回主页刷题</button>
+        <p style="font-size:15px; font-weight:bold;">${isPassed ? '🎉 恭喜通过考试！（合格线 80分）' : '❌ 未达到合格标准，请继续加油！'}</p>
+        <p style="color:#666; font-size:12px; margin-bottom: 15px;">本次考试共 ${examQuestions.length} 题，答对 ${score} 题，答错 ${examQuestions.length - score} 题。<br><b>点击下方红色题号可定位并查看错题解析：</b></p>
+        
+        ${gridHTML}
+
+        <button class="btn btn-primary" style="margin-top:10px; width:100%;" onclick="location.reload()">返回主页刷题</button>
       </div>
     `;
+
+    // 渲染错题解析列表
+    const reviewBox = document.getElementById('review-section');
+    reviewBox.innerHTML = '<h3 style="margin:20px 0 10px 0; color:#d93025;">❌ 错题逐题解析清单：</h3>';
+
+    let wrongCount = 0;
+    examResults.forEach(res => {
+      if (!res.isRight) {
+        wrongCount++;
+        const q = res.question;
+        let optsStr = q.options.join('\n');
+
+        reviewBox.innerHTML += `
+          <div class="review-card" id="wrong-target-${res.idx}">
+            <div style="font-size:12px; color:#d93025; font-weight:bold; margin-bottom:5px;">第 ${res.idx} 题（题库ID: ${q.id}）</div>
+            <div class="review-title">${q.question}</div>
+            <div style="font-size:13px; color:#555; white-space:pre-line; margin-bottom:8px;">${optsStr}</div>
+            <div class="review-ans" style="background:#fce8e6; color:#c5221f;">
+              您的答案：${res.userAns} &nbsp;|&nbsp; 正确答案：${res.correctAns}
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    if (wrongCount === 0) {
+      reviewBox.innerHTML += '<div style="text-align:center; color:#34a853; font-weight:bold;">太厉害了！本次考试满分，没有错题解析。</div>';
+    }
+  }
+
+  function scrollToReview(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'all 0.5s';
+      el.style.backgroundColor = '#fff3c4';
+      setTimeout(() => {
+        el.style.backgroundColor = 'white';
+      }, 1500);
+    }
   }
 
   function startTimer() {
@@ -364,7 +431,7 @@
 
       if (examSecondsLeft <= 0) {
         clearInterval(examTimerInterval);
-        alert("考试时间到，系统已自动交卷！");
+        alert("时间到，系统已自动提交！");
         finishExam();
       }
     }, 1000);
